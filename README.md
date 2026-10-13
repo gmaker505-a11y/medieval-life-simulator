@@ -23,7 +23,9 @@ The game saves the current life in that browser on that device. Use the Save but
 - Year-by-year ageing and choice-driven random events.
 - Health, happiness, intelligence, charm, reputation and money.
 - Careers, relationships, children, wealth, and biography/history sections.
-- Local save, new-life flow, and biography export.
+- Local save with an automatic previous-save backup, backup recovery, portable JSON save export/import, and biography export.
+- Save validation and safe recovery when the main save is damaged.
+- Automated randomized life stress tests that check stats and money remain in valid ranges.
 - Responsive medieval parchment interface designed for mobile and desktop.
 
 ## Automatic screenshot and self-check system
@@ -35,6 +37,10 @@ GitHub Actions runs Playwright checks on pushes to `main`, pull requests, and ma
 - Check for horizontal layout overflow.
 - Check that core screens render and that browser JavaScript errors do not occur.
 - Capture screenshots of the opening life, yearly event, event result, save/reload, and navigation sections.
+
+The header includes **Save**, **Export save**, **Import save**, and **Restore backup**. Save files are JSON and can be moved between browsers/devices manually. Saves remain local to the browser unless you export them. If a primary save becomes unreadable, the game attempts to recover the previous valid backup.
+
+The bug-hunter tests also cover corrupted-save recovery, rejecting invalid imports without overwriting the current life, and randomized year-by-year simulation. This is a useful safety net, not a proof that every possible bug has been found.
 
 To review the latest results:
 
