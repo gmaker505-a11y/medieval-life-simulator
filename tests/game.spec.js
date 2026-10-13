@@ -21,6 +21,7 @@ test('new life, yearly event, and event choice work @visual', async ({ page }, t
   await page.getByLabel('Family background').selectOption('Peasant family');
   await page.getByRole('button', { name: /Begin your life/ }).click();
   await expect(page.getByRole('heading', { name: /What will you do\?/ })).toBeVisible();
+  await page.locator('#toast').waitFor({ state: 'hidden' });
   await page.screenshot({ path: testInfo.outputPath('01-life-start.png'), fullPage: true });
 
   await page.getByRole('button', { name: /Live another year/ }).click();
@@ -38,6 +39,7 @@ test('all main sections render and mobile layout has no horizontal overflow @vis
   const mobile = testInfo.project.name.startsWith('mobile');
   await page.setViewportSize(mobile ? { width: 360, height: 800 } : { width: 1365, height: 900 });
   await beginLife(page, 'Eleanor');
+  await page.locator('#toast').waitFor({ state: 'hidden' });
 
   for (const section of ['Character', 'Career', 'People', 'Wealth', 'Biography']) {
     await page.getByRole('button', { name: new RegExp(section) }).click();
@@ -117,4 +119,13 @@ test('randomized life stress test keeps stats and money in valid ranges', async 
   expect(result.logLength).toBeGreaterThan(0);
   expect(Number.isFinite(result.money)).toBeTruthy();
   await expect(page.locator('#sideName')).toHaveText('Stress Test');
+});
+
+test('restoring a backup preserves the newer save so restore can be undone', async ({ page }) => {
+  await beginLife(page, 'Eleanor');
+  await page.getByRole('button', { name: /Live another year/ }).click();
+  await page.getByRole('button', { name: /Restore backup/ }).click();
+  await expect(page.locator('#sideStatus')).toContainText('Age 0');
+  await page.getByRole('button', { name: /Restore backup/ }).click();
+  await expect(page.locator('#sideStatus')).toContainText('Age 1');
 });
