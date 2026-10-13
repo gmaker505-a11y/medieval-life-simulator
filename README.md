@@ -26,6 +26,8 @@ The game saves the current life in that browser on that device. Use the Save but
 - Local save with an automatic previous-save backup, backup recovery, portable JSON save export/import, and biography export.
 - Save validation and safe recovery when the main save is damaged.
 - Automated randomized life stress tests that check stats and money remain in valid ranges.
+- A separate editable event catalogue with categories, weights, and age requirements.
+- An event validator that catches duplicate IDs/titles, missing text, invalid stat effects, and broken choice data before browser tests run.
 - Responsive medieval parchment interface designed for mobile and desktop.
 
 ## Automatic screenshot and self-check system
@@ -40,7 +42,7 @@ GitHub Actions runs Playwright checks on pushes to `main`, pull requests, and ma
 
 The header includes **Save**, **Export save**, **Import save**, and **Restore backup**. Restoring swaps the current and previous saves, so pressing **Restore backup** again can undo the restore. On mobile, save controls are arranged in a compact grid. Save files are JSON and can be moved between browsers/devices manually. Saves remain local to the browser unless you export them. If a primary save becomes unreadable, the game attempts to recover the previous valid backup.
 
-The bug-hunter tests also cover corrupted-save recovery, rejecting invalid imports without overwriting the current life, and randomized year-by-year simulation. This is a useful safety net, not a proof that every possible bug has been found.
+The bug-hunter tests also cover corrupted-save recovery, rejecting invalid imports without overwriting the current life, and randomized year-by-year simulation. Events live in `events.js`, separate from the main game logic. Each event has an ID, category, weight, minimum/maximum age, story text, and choices. The game filters out events that do not fit the character's age, then picks from eligible events using their weights. To add an event, copy an entry in `events.js` and give it a unique ID and title. The event validator checks the catalogue automatically. This is a useful safety net, not a proof that every possible bug has been found.
 
 To review the latest results:
 
@@ -58,5 +60,7 @@ npm install
 npx playwright install chromium
 npm test
 ```
+
+`npm test` validates the event catalogue before running Playwright. To validate just the event content, run `npm run validate:events`.
 
 Screenshots and traces are written to Playwright's test output folders. No paid services, subscriptions, or game assets are required.
