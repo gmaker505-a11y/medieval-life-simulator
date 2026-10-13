@@ -64,3 +64,57 @@ test('save and reload preserve the current character @visual', async ({ page }, 
   await expect(page.getByRole('heading', { name: /What will you do\?/ })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('saved-life.png'), fullPage: true });
 });
+
+test('corrupted primary save recovers from the previous valid backup', async ({ page }) => {
+  await beginLife(page, 'Eleanor');
+  await page.getByRole('button', { name: /Live another year/ }).click();
+  await page.locator('[data-event-choice]').first().click();
+  const backup = await page.evaluate(() => localStorage.getItem('medieval-life-save-v1-backup'));
+  expect(backup).toBeTruthy();
+  await page.evaluate(() => localStorage.setItem('medieval-life-save-v1', '{broken json'));
+  await page.reload();
+  await expect(page.locator('#sideName')).toHaveText('Eleanor');
+  await expect(page.getByRole('heading', { name: /What will you do\?/ })).toBeVisible();
+  await expect(page.getByRole('status')).toContainText(/Recovered your life from the backup save/);
+});
+
+test('save export downloads a portable JSON save and import restores another life', async ({ page }) => {
+  await beginLife(page, 'Eleanor');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: /Export save/ }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/eleanor-medieval-life-save\.json/);
+
+  const imported = { format: 'medieval-life-save', version: 2, game: {
+    name: 'Imported Rowan', age: 27, year: 1027, alive: true, money: 77, log: []
+  }};
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('#importSaveFile').setInputFiles({
+    name: 'rowan-save.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(imported))
+  });
+  await expect(page.locator('#sideName')).toHaveText('Imported Rowan');
+  await expect(page.getByRole('status')).toContainText(/Life imported successfully/);
+});
+
+test('invalid save import is rejected without replacing the current life', async ({ page }) => {
+  await beginLife(page, 'Eleanor');
+  await page.locator('#importSaveFile').setInputFiles({
+    name: 'invalid-save.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ name: 'Broken', age: 'not a number' }))
+  });
+  await expect(page.locator('#sideName')).toHaveText('Eleanor');
+  await expect(page.getByRole('status')).toContainText(/not a valid Medieval Life save/);
+});
+
+test('randomized life stress test keeps stats and money in valid ranges', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(() => window.__MEDIEVAL_TEST__.runStressTest(40));
+  expect(result.invalid, 'stress test should not produce invalid stats or money').toEqual([]);
+  expect(result.age).toBeGreaterThan(20);
+  expect(result.logLength).toBeGreaterThan(0);
+  expect(Number.isFinite(result.money)).toBeTruthy();
+  await expect(page.locator('#sideName')).toHaveText('Stress Test');
+});
