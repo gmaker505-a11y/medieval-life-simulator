@@ -30,6 +30,7 @@
 <div class="footer">A little life, a thousand possible stories. · Your progress saves on this device.</div>
 </div>
 <div id="toast" class="toast hidden" role="status"></div>
+<script src="events.js"></script>
 <script>
 (function(){
 'use strict';
@@ -52,21 +53,7 @@ const careers={
 'Knight':{pay:32,skill:'combat',desc:'A title, fine equipment and dangerous duties.'},
 'Noble Steward':{pay:35,skill:'charm',desc:'Manage an estate and earn a lord’s trust.'},
 'Royal Adviser':{pay:55,skill:'intellect',desc:'Whisper counsel where kingdoms are shaped.'},
-'Lord / Lady':{pay:60,skill:'charm',desc:'Rule an estate, collect rents and manage obligations.'}
-};
-const events=[
-{title:'A travelling peddler',text:'A peddler arrives with bright ribbons, curious trinkets and rumours from distant roads.',choices:[['🪙','Trade a few coins for a useful tool','money',-8,'The tool may serve you well.'],['👂','Listen to the rumours','intellect',2,'You learn something useful about the wider world.'],['🚶','Move along','happiness',1,'You spend the afternoon in peace.']]},
-{title:'A village feast',text:'The harvest is in, and the village gathers around a long table beneath lanterns.',choices:[['🍲','Join the feast','happiness',9,'Good food and company lift your spirits.'],['🤝','Make useful connections','reputation',5,'A few villagers remember your kindness.'],['💰','Sell food and drink','money',12,'You turn the crowd into a tidy profit.']]},
-{title:'A difficult neighbour',text:'A neighbour claims your family owes them a debt. The whole lane is watching.',choices:[['🗣️','Talk it out calmly','charm',3,'A calm conversation keeps the dispute from growing.'],['⚔️','Threaten to settle it by force','health',-7,'The argument becomes a scuffle.'],['🪙','Pay a small settlement','money',-10,'The neighbour leaves, though the cost stings.']]},
-{title:'A letter from the lord',text:'A sealed letter calls for able hands at the manor. It could be an opportunity—or trouble.',choices:[['🏰','Offer your service','reputation',6,'The steward takes note of your willingness.'],['📜','Ask what the work involves','intellect',2,'You learn the details before committing.'],['🙈','Stay out of it','happiness',-1,'You avoid the risk, but wonder what might have been.']]},
-{title:'A sick villager',text:'A family nearby is struggling with a fever. They ask whether you can help.',choices:[['🫶','Help them with what you can','reputation',8,'The family will remember your generosity.'],['🧪','Search for herbs','intellect',3,'You learn about a useful local remedy.'],['🚪','Keep your distance','health',1,'You avoid exposure, though some neighbours judge you.']]},
-{title:'A tempting shortcut',text:'You spot an unattended purse near the market well. Nobody seems to have noticed it.',choices:[['🪙','Take it quietly','money',18,'The coins are useful, but you feel eyes on your back.'],['📣','Find its owner','reputation',9,'The grateful owner speaks well of you.'],['🚶','Leave it alone','happiness',2,'You walk away with a clear conscience.']]},
-{title:'A hard winter',text:'The cold settles in early. Wood is scarce, food costs more and everyone is anxious.',choices:[['🪵','Spend savings on supplies','money',-12,'Your stores should see you through.'],['🤝','Share resources with neighbours','reputation',7,'The village grows closer in a difficult season.'],['🥶','Make do with little','health',-6,'You get through the worst of it, but the cold takes its toll.']]},
-{title:'A chance to learn',text:'A travelling scholar offers lessons in exchange for help with their luggage.',choices:[['📚','Take the lessons','intellect',8,'You gain knowledge that may open new doors.'],['💪','Ask for physical training instead','health',5,'The scholar introduces you to a retired soldier.'],['💼','Ask about paid work','money',8,'You earn a little coin carrying books and supplies.']]},
-{title:'A public tournament',text:'The lord hosts a tournament. Crowds cheer, wagers fly and reputations can change overnight.',choices:[['🛡️','Enter the contest','health',-4,'You leave bruised, but people admire your courage.'],['🎲','Place a small wager','money',8,'A lucky guess brings a modest return.'],['👀','Watch and make introductions','reputation',5,'You meet people who may prove useful.']]},
-{title:'A rumour of war',text:'Riders bring word that neighbouring lords are gathering their forces.',choices:[['⚔️','Volunteer for service','reputation',8,'Your willingness to serve earns notice.'],['🌾','Secure food and supplies','money',-7,'You prepare your household for uncertain times.'],['🕊️','Encourage peace','happiness',3,'You do what you can to keep fear from spreading.']]},
-{title:'An unexpected inheritance',text:'A distant relative has died and left a small sum to your family.',choices:[['🏠','Invest in your home','money',-10,'Your home becomes a little more secure.'],['🪙','Keep every coin','money',22,'The unexpected money strengthens your purse.'],['🍞','Share with those in need','reputation',10,'Your generosity earns lasting goodwill.']]},
-{title:'A private invitation',text:'Someone influential invites you to a private supper. A new alliance may be possible.',choices:[['🍷','Attend and be charming','reputation',7,'You leave with a promising new connection.'],['🎁','Bring a thoughtful gift','money',-6,'The gesture is well received.'],['🛏️','Decline and rest','health',4,'A quiet evening does you good.']]}
+'Lord / Lady':{pay:60,skill:'charm',desc:'Rule an estate, collect rconst events=window.MEDIEVAL_EVENTS||[];quiet evening does you good.']]}
 ];
 let game=null,activePage='life',pendingEvent=null;
 const clamp=(n,min=0,max=100)=>Math.max(min,Math.min(max,n));
