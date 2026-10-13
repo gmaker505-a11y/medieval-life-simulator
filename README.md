@@ -38,7 +38,7 @@ GitHub Actions runs Playwright checks on pushes to `main`, pull requests, and ma
 - Check that core screens render and that browser JavaScript errors do not occur.
 - Capture screenshots of the opening life, yearly event, event result, save/reload, and navigation sections.
 
-The header includes **Save**, **Export save**, **Import save**, and **Restore backup**. Save files are JSON and can be moved between browsers/devices manually. Saves remain local to the browser unless you export them. If a primary save becomes unreadable, the game attempts to recover the previous valid backup.
+The header includes **Save**, **Export save**, **Import save**, and **Restore backup**. Restoring swaps the current and previous saves, so pressing **Restore backup** again can undo the restore. On mobile, save controls are arranged in a compact grid. Save files are JSON and can be moved between browsers/devices manually. Saves remain local to the browser unless you export them. If a primary save becomes unreadable, the game attempts to recover the previous valid backup.
 
 The bug-hunter tests also cover corrupted-save recovery, rejecting invalid imports without overwriting the current life, and randomized year-by-year simulation. This is a useful safety net, not a proof that every possible bug has been found.
 
