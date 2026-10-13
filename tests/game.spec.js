@@ -129,3 +129,27 @@ test('restoring a backup preserves the newer save so restore can be undone', asy
   await page.getByRole('button', { name: /Restore backup/ }).click();
   await expect(page.locator('#sideStatus')).toContainText('Age 1');
 });
+
+test('event catalogue is available and age gates filter events correctly', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(() => {
+    const api = window.__MEDIEVAL_TEST__;
+    const events = api.getEvents();
+    const childEvents = api.eligibleEvents({ age: 0 });
+    const adultEvents = api.eligibleEvents({ age: 18 });
+    return {
+      count: events.length,
+      idsUnique: new Set(events.map(event => event.id)).size === events.length,
+      choicesValid: events.every(event => Array.isArray(event.choices) && event.choices.length >= 2),
+      invitationHiddenForChild: !childEvents.some(event => event.id === 'a-private-invitation'),
+      invitationAvailableForAdult: adultEvents.some(event => event.id === 'a-private-invitation'),
+      weightedChoiceWorks: api.chooseWeightedEvent([{ id: 'test-event', weight: 1 }]).id
+    };
+  });
+  expect(result.count).toBeGreaterThanOrEqual(12);
+  expect(result.idsUnique).toBeTruthy();
+  expect(result.choicesValid).toBeTruthy();
+  expect(result.invitationHiddenForChild).toBeTruthy();
+  expect(result.invitationAvailableForAdult).toBeTruthy();
+  expect(result.weightedChoiceWorks).toBe('test-event');
+});
