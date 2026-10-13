@@ -15,7 +15,7 @@
 </head>
 <body>
 <div class="app">
-<header class="masthead"><div class="brand"><div class="crest">♜</div><div><h1>Medieval Life</h1><p>A life of your own</p></div></div><div class="top-actions"><button class="dark-btn" id="saveBtn" type="button">↥ Save</button><button class="dark-btn" id="newLifeBtn" type="button">＋ New life</button></div></header>
+<header class="masthead"><div class="brand"><div class="crest">♜</div><div><h1>Medieval Life</h1><p>A life of your own</p></div></div><div class="top-actions"><button class="dark-btn" id="saveBtn" type="button">↥ Save</button><button class="dark-btn" id="exportSaveBtn" type="button">⇩ Export save</button><button class="dark-btn" id="importSaveBtn" type="button">⇧ Import save</button><button class="dark-btn" id="restoreBackupBtn" type="button">↶ Restore backup</button><button class="dark-btn" id="newLifeBtn" type="button">＋ New life</button><input id="importSaveFile" type="file" accept=".json,application/json" hidden></div></header>
 <div class="layout">
 <aside class="panel side">
 <div class="side-top"><div class="portrait"><div><div class="emoji" id="portraitEmoji">👶</div><strong id="sideName">Your story</strong><small id="sideStatus">Awaiting your birth</small></div></div><div><div class="section-label">Your purse</div><div class="money" id="money">0 coins</div><div class="subtle" id="occupation">No occupation yet</div><div class="badge" id="rankBadge">Commoner</div></div></div>
@@ -34,6 +34,8 @@
 (function(){
 'use strict';
 const KEY='medieval-life-save-v1';
+const BACKUP_KEY=KEY+'-backup';
+const SAVE_VERSION=2;
 const $=id=>document.getElementById(id);
 const seasons=['Spring','Summer','Autumn','Winter'];
 const careers={
@@ -75,8 +77,72 @@ function addLog(title,text,tag='Life'){game.log.unshift({age:game.age,title,text
 function fresh(name,origin,trait){
 return {name:name||'Alden',age:0,year:1000,origin:origin||'Peasant family',trait:trait||'Kind-hearted',health:90,happiness:75,intellect:45,charm:40,combat:25,craft:35,stealth:20,faith:40,reputation:10,money:origin==='Noble household'?90:origin==='Merchant family'?45:origin==='Royal blood'?250:12,career:'Unemployed',rank:origin==='Royal blood'?'Royal blood':origin==='Noble household'?'Noble':'Commoner',partner:null,children:0,house:false,business:null,skills:{},alive:true,log:[],assets:[],lastAction:'Your story begins.',eventCount:0};
 }
-function save(silent=false){if(!game){toast('Start a life first.');return}try{localStorage.setItem(KEY,JSON.stringify(game));if(!silent)toast('Your life has been saved on this device.')}catch(e){if(!silent)toast('Could not save in this browser.')}}
-function load(){try{const s=localStorage.getItem(KEY);if(s){game=JSON.parse(s);if(!game.log)game.log=[];return true}}catch(e){}return false}
+function validSaveData(s){
+return !!s&&typeof s==='object'&&!Array.isArray(s)&&typeof s.name==='string'&&s.name.trim().length>0&&Number.isFinite(Number(s.age))&&Number(s.age)>=0&&Number(s.age)<=130&&Number.isFinite(Number(s.year))&&Number(s.year)>=1&&typeof s.alive==='boolean'&&Array.isArray(s.log)&&Number.isFinite(Number(s.money));
+}
+function normaliseSaveData(s){
+const base=fresh(s.name,s.origin,s.trait);
+const clean={...base,...s};
+clean.name=String(clean.name).trim().slice(0,24)||'Rowan';
+clean.age=Math.max(0,Math.min(130,Math.floor(Number(clean.age)||0)));
+clean.year=Math.max(1,Math.floor(Number(clean.year)||1000));
+clean.money=Math.max(0,Number.isFinite(Number(clean.money))?Number(clean.money):0);
+clean.log=Array.isArray(clean.log)?clean.log.filter(e=>e&&typeof e==='object').slice(0,120):[];
+clean.assets=Array.isArray(clean.assets)?clean.assets:[];
+clean.skills=clean.skills&&typeof clean.skills==='object'&&!Array.isArray(clean.skills)?clean.skills:{};
+clean.children=Math.max(0,Math.floor(Number(clean.children)||0));
+for(const k of ['health','happiness','intellect','charm','combat','craft','stealth','faith','reputation'])clean[k]=clamp(Number.isFinite(Number(clean[k]))?Number(clean[k]):base[k]);
+clean.version=SAVE_VERSION;
+return clean;
+}
+function parseStoredSave(key){try{const raw=localStorage.getItem(key);if(!raw)return null;const parsed=JSON.parse(raw);const data=parsed&&parsed.game?parsed.game:parsed;return validSaveData(data)?normaliseSaveData(data):null}catch(e){return null}}
+function save(silent=false){
+if(!game){if(!silent)toast('Start a life first.');return false}
+try{
+const previous=parseStoredSave(KEY);
+if(previous)localStorage.setItem(BACKUP_KEY,JSON.stringify({version:SAVE_VERSION,savedAt:new Date().toISOString(),game:previous}));
+const payload={version:SAVE_VERSION,savedAt:new Date().toISOString(),game:normaliseSaveData(game)};
+localStorage.setItem(KEY,JSON.stringify(payload));game=payload.game;
+if(!silent)toast('Saved safely on this device. A previous version is kept as backup.');
+return true;
+}catch(e){if(!silent)toast('Could not save. Browser storage may be full or disabled.');return false}
+}
+function load(){
+const primary=parseStoredSave(KEY);
+if(primary){game=primary;return true}
+const backup=parseStoredSave(BACKUP_KEY);
+if(backup){game=backup;try{localStorage.setItem(KEY,JSON.stringify({version:SAVE_VERSION,savedAt:new Date().toISOString(),game:backup}))}catch(e){};setTimeout(()=>toast('Recovered your life from the backup save.'),0);return true}
+return false
+}
+function restoreBackup(){
+const backup=parseStoredSave(BACKUP_KEY);
+if(!backup){toast('No valid backup is available yet. Save your life and try again.');return}
+game=backup;pendingEvent=null;activePage='life';
+try{localStorage.setItem(KEY,JSON.stringify({version:SAVE_VERSION,savedAt:new Date().toISOString(),game:backup}))}catch(e){toast('Backup restored in memory, but browser storage is unavailable.')}
+render();toast('Backup restored. Your earlier progress is back.')
+}
+function downloadJSON(filename,data){
+const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});
+const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function exportSave(){
+if(!game){toast('Start a life first.');return}
+downloadJSON((game.name.toLowerCase().replace(/[^a-z0-9]+/g,'-')||'life')+'-medieval-life-save.json',{format:'medieval-life-save',version:SAVE_VERSION,exportedAt:new Date().toISOString(),game:normaliseSaveData(game)});
+toast('Save file exported. Keep it somewhere safe.')
+}
+function importSaveData(parsed){
+const data=parsed&&parsed.game?parsed.game:parsed;
+if(!validSaveData(data)){toast('That file is not a valid Medieval Life save. Nothing was changed.');return false}
+if(game&&!confirm('Import this life and replace the current one? Your current save will remain available as a backup.'))return false;
+game=normaliseSaveData(data);pendingEvent=null;activePage='life';save(true);render();toast('Life imported successfully.');return true
+}
+function importSaveFile(file){
+if(!file)return;
+const reader=new FileReader();
+reader.onload=()=>{try{importSaveData(JSON.parse(String(reader.result||'')))}catch(e){toast('Could not read that save file. Nothing was changed.')}};
+reader.onerror=()=>toast('Could not read that file. Try another copy.');
+reader.readAsText(file);
+}
 function stat(label,key,cls){let v=clamp(game[key]);return '<div class="stat"><div class="stat-top"><span>'+label+'</span><strong>'+v+'</strong></div><div class="track"><div class="fill '+(cls||'')+'" style="width:'+v+'%"></div></div></div>'}
 function updateShell(){
 if(!game)return;
@@ -159,11 +225,11 @@ function applyJob(name){const job=careers[name];if(!job)return;if(game.age<13||(
 function romance(){if(game.partner){game.happiness=clamp(game.happiness+8);game.reputation=clamp(game.reputation+1);game.lastAction='You make time for your partner and strengthen your bond.';addLog('A moment together',game.lastAction,'Relationship')}else{const names=['Alys','Edwin','Maren','Thomas','Elin','Hugh','Beatrice','Robin','Cecily','Willem'];game.partner=rand(names);game.happiness=clamp(game.happiness+8);game.reputation=clamp(game.reputation+2);game.lastAction='You meet '+game.partner+' and the two of you begin a relationship.';addLog('A new romance',game.lastAction,'Relationship')}save(true);render();toast(game.lastAction)}
 function child(){if(!game.partner||game.age<18||game.children>=8)return;game.children++;game.money=Math.max(0,game.money-8);game.happiness=clamp(game.happiness+5);game.lastAction='You welcome a child into your family. Your legacy grows.';addLog('A child is born',game.lastAction,'Family');save(true);render();toast('Your family grows.')}
 function exportBio(){if(!game)return;const textOut='MEDIEVAL LIFE — BIOGRAPHY\n'+game.name+'\nBorn: '+game.year+' · Background: '+game.origin+'\nFinal age: '+game.age+'\nStanding: '+game.rank+'\nCareer: '+game.career+'\nChildren: '+game.children+'\n\n'+game.log.slice().reverse().map(e=>'Age '+e.age+' — '+e.title+'\n'+e.text).join('\n\n');const blob=new Blob([textOut],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=(game.name.toLowerCase().replace(/[^a-z0-9]+/g,'-')||'life')+'-biography.txt';a.click();URL.revokeObjectURL(url);toast('Biography export prepared.')}
-function bind(){const c=$('pageContent');c.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.id==='startBtn')return startLife();if(b.id==='ageBtn')return advanceYear();if(b.id==='restBtn'){game.health=clamp(game.health+12);game.happiness=clamp(game.happiness+3);game.lastAction='You take a quiet day to rest and recover.';addLog('A day of rest',game.lastAction,'Choice');save(true);render();return toast(game.lastAction)}if(b.id==='studyBtn')return applyAction('study');if(b.id==='romanceBtn')return romance();if(b.id==='childBtn')return child();if(b.id==='exportBtn')return exportBio();if(b.id==='newAfterDeath')return newLife();if(b.dataset.eventChoice!==undefined)return eventChoice(Number(b.dataset.eventChoice));if(b.dataset.job)return applyJob(b.dataset.job);if(b.dataset.choiceType==='action')return applyAction(b.dataset.choice);if(b.dataset.choiceType==='page'){activePage=b.dataset.choice;pendingEvent=null;render();return}});document.querySelector('.nav').addEventListener('click',e=>{const b=e.target.closest('button[data-page]');if(!b)return;activePage=b.dataset.page;pendingEvent=null;render()});$('saveBtn').addEventListener('click',()=>save());$('newLifeBtn').addEventListener('click',newLife)}
+function bind(){const c=$('pageContent');c.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.id==='startBtn')return startLife();if(b.id==='ageBtn')return advanceYear();if(b.id==='restBtn'){game.health=clamp(game.health+12);game.happiness=clamp(game.happiness+3);game.lastAction='You take a quiet day to rest and recover.';addLog('A day of rest',game.lastAction,'Choice');save(true);render();return toast(game.lastAction)}if(b.id==='studyBtn')return applyAction('study');if(b.id==='romanceBtn')return romance();if(b.id==='childBtn')return child();if(b.id==='exportBtn')return exportBio();if(b.id==='newAfterDeath')return newLife();if(b.dataset.eventChoice!==undefined)return eventChoice(Number(b.dataset.eventChoice));if(b.dataset.job)return applyJob(b.dataset.job);if(b.dataset.choiceType==='action')return applyAction(b.dataset.choice);if(b.dataset.choiceType==='page'){activePage=b.dataset.choice;pendingEvent=null;render();return}});document.querySelector('.nav').addEventListener('click',e=>{const b=e.target.closest('button[data-page]');if(!b)return;activePage=b.dataset.page;pendingEvent=null;render()});$('saveBtn').addEventListener('click',()=>save());$('exportSaveBtn').addEventListener('click',exportSave);$('importSaveBtn').addEventListener('click',()=>$('importSaveFile').click());$('importSaveFile').addEventListener('change',e=>{importSaveFile(e.target.files&&e.target.files[0]);e.target.value=''});$('restoreBackupBtn').addEventListener('click',restoreBackup);$('newLifeBtn').addEventListener('click',newLife)}
 function newLife(){if(game&&game.alive&&!confirm('Start a new life? Your current life will be replaced. Export the biography first if you want to keep it.'))return;pendingEvent=null;game=null;activePage='life';render()}
 $('pageContent').addEventListener('click',()=>{});bind();
 if(!load()){game=null;activePage='life'}render();
-window.__MEDIEVAL_TEST__={getState:()=>game, startTestLife:()=>{game=fresh('Test Rowan','Peasant family','Curious');game.age=20;game.year=1020;game.career='Farmhand';game.money=100;game.alive=true;addLog('Test life','Testing the game.');save(true);render()},advanceYear,render};
+window.__MEDIEVAL_TEST__={getState:()=>game, startTestLife:()=>{game=fresh('Test Rowan','Peasant family','Curious');game.age=20;game.year=1020;game.career='Farmhand';game.money=100;game.alive=true;addLog('Test life','Testing the game.');save(true);render()},advanceYear,render,validSaveData,normaliseSaveData,restoreBackup,importSaveData,save,load};
 })();
 </script>
 </body>
