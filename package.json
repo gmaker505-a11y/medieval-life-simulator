@@ -1,0 +1,13 @@
+{
+  "name": "medieval-life-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A free, choice-driven medieval life simulator",
+  "scripts": {
+    "test": "playwright test",
+    "test:visual": "playwright test --grep @visual"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
